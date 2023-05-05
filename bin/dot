@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-var through = require('through2');
+const stream = require("stream")
 var parser = require('tap-out');
 var color = require('colorette');
-var out = through();
+var out = stream.Transform()
+out._transform = (a, b, c) => c(null, a)
 var tap = parser();
 var currentTestName = '';
 var errors = [];
@@ -13,11 +14,11 @@ var lastComment;
 
 process.stdin.pipe(tap);
 
-out.push('\n');
+out.write('\n');
 
 function outPush (str) {
 
-  out.push('  ' + str);
+  out.write('  ' + str);
 };
 
 tap.on('comment', function (comment) {
@@ -35,13 +36,13 @@ tap.on('assert', function (res) {
 
   if (res.ok) {
     (firstTestDone)
-      ? out.push(color[key]('.'))
+      ? out.write(color[key]('.'))
       : outPush(color[key]('.'));
 
     firstTestDone = true;
   }
   if (!res.ok) {
-    out.push(color[key]('x'));
+    out.write(color[key]('x'));
   }
 });
 
@@ -58,11 +59,14 @@ tap.on('output', function (res) {
     res.fail.forEach(function (failure) {
         outPush(color.white('---') + '\n');
 
-        // Use the unwrapped out.push here as the raw error is already indented
-        out.push(color.white(failure.error.raw) + '\n');
+        // Use the unwrapped out.write here as the raw error is already indented
+        for (const line of failure.error.raw.split("\n")) {
+          if (line.includes("stack: |-")) break
+          out.write(line + '\n');
+        }
 
         var stackPadding = '           '
-        out.push(color.white(stackPadding + failure.error.stack.replace(/\n/g, '\n  ' + stackPadding)) + '\n');
+        out.write(color.dim(stackPadding + failure.error.stack.replace(/\n/g, '\n  ' + stackPadding)) + '\n');
 
         outPush(color.white('...') + '\n');
     });
