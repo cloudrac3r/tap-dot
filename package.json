@@ -27,6 +27,6 @@
   },
   "dependencies": {
     "colorette": "^1.0.5",
-    "tap-out": "github:alandelaney-whs/tap-out"
+    "tap-out": "github:cloudrac3r/tap-out#1b4ec6084aedb9f44ccaa0c7185ff9bfd83da771"
   }
 }
