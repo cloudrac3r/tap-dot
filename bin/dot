@@ -10,7 +10,11 @@ var currentTestName = '';
 var errors = [];
 var extra = [];
 var assertCount = 0;
-var lastComment;
+var testName;
+
+tap.on('test', function (test) {
+  testName = test.name;
+});
 
 process.stdin.pipe(tap);
 
@@ -21,15 +25,11 @@ function outPush (str) {
   out.write('  ' + str);
 };
 
-tap.on('comment', function (comment) {
-
-  lastComment = comment;
-});
-
 var firstTestDone = false;
 
 tap.on('assert', function (res) {
 
+  if (testName) res.name = `${testName} - ${res.name}`
   var key = (res.ok) ? 'green' : 'red';
 
   assertCount +=1;
@@ -57,7 +57,7 @@ tap.on('output', function (res) {
     outPush('\n\n\n');
 
     res.fail.forEach(function (failure) {
-        outPush(color.white('---') + '\n');
+        outPush(color.underline(failure.name) + '\n');
 
         // Use the unwrapped out.write here as the raw error is already indented
         for (const line of failure.error.raw.split("\n")) {
@@ -65,10 +65,18 @@ tap.on('output', function (res) {
           out.write(line + '\n');
         }
 
-        var stackPadding = '           '
-        out.write(color.dim(stackPadding + failure.error.stack.replace(/\n/g, '\n  ' + stackPadding)) + '\n');
+        var stackPadding = '    '
+        let stackLines = failure.error.stack.split('\n')
+        for (let i = 0; i < stackLines.length; i++) {
+          let line = stackLines[i]
+          if (line.includes("run-tests.js")) break
+          line = stackPadding + line
+          if (i === 0) stackPadding += '  '
+          else line = color.dim(line)
+          out.write(line + '\n')
+        }
 
-        outPush(color.white('...') + '\n');
+        outPush('\n');
     });
 
     errors = res.fail;
@@ -78,12 +86,12 @@ tap.on('output', function (res) {
 
     outPush(color.red(res.fail.length + ' failed'));
 
-    var past = (res.fail.length == 1) ? 'was' : 'were';
-    var plural = (res.fail.length == 1) ? 'failure' : 'failures';
+    var wasWere = (res.fail.length == 1) ? 'was' : 'were';
+    var failureFailures = (res.fail.length == 1) ? 'failure' : 'failures';
 
     outPush('\n\n');
-    outPush(color.red('Failed Tests: '));
-    outPush('There ' + past + ' ' + color.red(res.fail.length) + ' ' + plural + '\n\n');
+    outPush(color.red('Failed Tests:'));
+    outPush('There ' + wasWere + ' ' + color.red(res.fail.length) + ' ' + failureFailures + '\n\n');
 
     res.fail.forEach(function (error) {
       outPush('  ' + color.red('x') + ' ' + error.name + '\n');
